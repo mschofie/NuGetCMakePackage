@@ -23,8 +23,7 @@ static inline bool IsRunningOnArm64()
         USHORT processMachine{};
         USHORT nativeMachine{};
         const auto result{::IsWow64Process2(GetCurrentProcess(), &processMachine, &nativeMachine)};
-        THROW_IF_WIN32_BOOL_FALSE_MSG(result, "Failed to retrieve native machine information");
-        return nativeMachine == IMAGE_FILE_MACHINE_ARM64;
+        return (0 == result) || (nativeMachine == IMAGE_FILE_MACHINE_ARM64);
     }();
     return isArm64Native;
 #endif

@@ -4,13 +4,13 @@ This repository contains common infrastructure for using NuGet packages from wit
 
 ## Usage
 
-This repository is intended to be consumed through [CMake's FetchContent package][cmake-fetch-content]. Consumers should add a call to [`FetchContent_Declare`][fetchcontent_declare] to declare the content details:
+This repository is intended to be consumed through [CMake's FetchContent package][cmake-fetchcontent]. Consumers should add a call to [`FetchContent_Declare`][fetchcontent_declare] to declare the content details:
 
 ```cmake
 FetchContent_Declare(
     CMakeNuGetPackage
     GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
-    GIT_TAG 0a8e48e316df648e0e369e2f8b9957e63113b9be
+    GIT_TAG 0123456789abcdef0123456789abcdef01234567
 )
 ```
 
@@ -22,7 +22,7 @@ Having declared the content, make a call to [`FetchContent_MakeAvailable`][fetch
 FetchContent_MakeAvailable(CMakeNuGetPackage)
 ```
 
-After calling `FetchContent_MakeAvailable` two main functions are available for leveraging NuGet packages: `install_nuget_package` and `add_nuget_library`.
+After calling `FetchContent_MakeAvailable` two main functions are available for leveraging NuGet packages: `install_nuget_package` and `add_nuget_packages`.
 
 ### Using 'install_nuget_package'
 
@@ -34,12 +34,19 @@ install_nuget_package(Microsoft.Windows.ImplementationLibrary 1.0.250325.1 NUGET
 
 will download the 'Microsoft.Windows.ImplementationLibrary' NuGet package, version 1.0.250325.1 and set `NUGET_MICROSOFT_WINDOWS_IMPLEMENTATIONLIBRARY` (in the calling scope) to the location of the root of the package.
 
-### Using 'add_nuget_library'
+### Using 'add_nuget_packages'
 
-`add_nuget_library` will download a NuGet package - using `install_nuget_package` - and then look for CMake scripts within the NuGet package to parse, providing a description of the package. See [the comments on `add_nuget_library`](./CMakeLists.txt) for more details on the heuristics that are applied. After calling `add_nuget_library` a CMake target will be introduced that represents the NuGet package, and can be referenced by consumers. For example:
+`add_nuget_packages` will download NuGet packages - using `install_nuget_package` - and then look for CMake scripts within the NuGet making those scripts findable through CMake's [`find_package`][cmake-find_package]. See [the comments on `add_nuget_packages`](./CMakeLists.txt) for more details on the heuristics that are applied. After calling `add_nuget_packages`, call `find_package` to include the package in the build. For example:
 
 ```cmake
-add_nuget_library(Microsoft.Windows.ImplementationLibrary 1.0.250325.1)
+add_nuget_packages(
+    PACKAGES
+        Microsoft.Windows.ImplementationLibrary 1.0.250325.1
+)
+```
+
+```cmake
+find_package(Microsoft.Windows.ImplementationLibrary CONFIG REQUIRED)
 ```
 
 ```cmake
@@ -57,10 +64,11 @@ The behavior of this package can be configured with the following CMake variable
 
     Note: Since `CMAKE_BINARY_DIR` is platform specific, the default download location will change by platform, resulting in NuGet packages being downloaded once for each platform that is built. Setting `NUGET_PACKAGE_ROOT_PATH` to a platform-independent path (e.g. relative to the root of the repository) will allow NuGet packages to be downloaded once for all platforms.
 
-* `NUGET_TOOLS_PATH` - If neeeded, the NuGet executable will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set, then it will be downloaded to `${CMAKE_BINARY_DIR}/__tools`.
+* `NUGET_TOOLS_PATH` - If needed, the NuGet executable will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set, then it will be downloaded to `${CMAKE_BINARY_DIR}/__tools`.
 
     Note: Since `CMAKE_BINARY_DIR` is platform specific, the default download location will change by platform, resulting in NuGet being downloaded once for each platform that is built. Setting `NUGET_TOOLS_PATH` to a platform-independent path (e.g. relative to the root of the repository) will allow NuGet to be downloaded once for all platforms.
 
-[cmake-fetch-content]: https://cmake.org/cmake/help/latest/module/FetchContent.html
+[cmake-fetchcontent]: https://cmake.org/cmake/help/latest/module/FetchContent.html
+[cmake-find_package]: https://cmake.org/cmake/help/latest/command/find_package.html
 [fetchcontent_declare]: https://cmake.org/cmake/help/latest/module/FetchContent.html#command:fetchcontent_declare
 [fetchcontent_makeavailable]: https://cmake.org/cmake/help/latest/module/FetchContent.html#command:fetchcontent_makeavailable

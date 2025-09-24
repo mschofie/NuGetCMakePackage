@@ -1,7 +1,21 @@
 #[[====================================================================================================================
 
-====================================================================================================================]]#
+    Microsoft.Windows.CppWinRT
+    --------------------------
+    CMake configuration file for the Microsoft.Windows.CppWinRT package.
 
+        add_nuget_packages(Microsoft.Windows.CppWinRT <version>)
+
+        find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
+
+        target_link_libraries(<your-target>
+            PRIVATE
+                Microsoft.Windows.CppWinRT
+        )
+
+    The 'Microsoft.Windows.CppWinRT' target represents the CppWinRT projection for the system version being targeted.
+
+====================================================================================================================]]#
 
 #[[====================================================================================================================
     add_cppwinrt_projection
@@ -53,7 +67,7 @@ function(add_cppwinrt_projection TARGET_NAME)
     cmake_parse_arguments(PARSE_ARGV 1 CPPWINRT "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
 
     if(NOT CPPWINRT_VERSION)
-        message(FATAL_ERROR "add_cppwinrt_projection: CPPWINRT_VERSION must be specified.")
+        message(FATAL_ERROR "add_cppwinrt_projection: VERSION must be specified.")
     endif()
 
     if(NOT CPPWINRT_PROJECTION_ROOT_PATH)
@@ -77,7 +91,7 @@ function(add_cppwinrt_projection TARGET_NAME)
             if (NOT _refs MATCHES "-NOTFOUND$")
                 list(APPEND CPPWINRT_REFS ${_refs})
             else()
-                message(WARNING "add_cppwinwinrt_project: Dependency ${_dep} does not have target property INTERFACE_CPPWINRT_REFS!")
+                message(WARNING "add_cppwinrt_project: Dependency ${_dep} does not have target property INTERFACE_CPPWINRT_REFS!")
             endif()
         endforeach()
     endif()
@@ -85,16 +99,14 @@ function(add_cppwinrt_projection TARGET_NAME)
     message(VERBOSE "add_cppwinrt_projection: CPPWINRT_VERSION = ${CPPWINRT_VERSION}")
     message(VERBOSE "add_cppwinrt_projection: CPPWINRT_PROJECTION_ROOT_PATH = ${CPPWINRT_PROJECTION_ROOT_PATH}")
 
-    # Install the Microsoft.Windows.CppWinRT NuGet
-    install_nuget_package(Microsoft.Windows.CppWinRT ${CPPWINRT_VERSION} NUGET_MICROSOFT_WINDOWS_CPPWINRT
-        PACKAGESAVEMODE nuspec
-        PRERELEASE ON
-    )
+    # For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
+    # For 'laid out' configuration, this should rely on the location of the current file.
+    get_property(PACKAGE_LOCATION GLOBAL PROPERTY NUGET_LOCATION-MICROSOFT_WINDOWS_CPPWINRT)
 
     # Build the command to generate the projection
     set(CPPWINRT_OUTPUT ${CPPWINRT_PROJECTION_ROOT_PATH}/${TARGET_NAME})
     set(CPPWINRT_OUTPUT_FILE ${CPPWINRT_OUTPUT}/output.log)
-    set(CPPWINRT_EXECUTABLE_PATH ${NUGET_MICROSOFT_WINDOWS_CPPWINRT}/bin/cppwinrt.exe)
+    set(CPPWINRT_EXECUTABLE_PATH ${PACKAGE_LOCATION}/bin/cppwinrt.exe)
 
     set(CPPWINRT_COMMAND)
     list(APPEND CPPWINRT_COMMAND

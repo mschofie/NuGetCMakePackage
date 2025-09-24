@@ -2,10 +2,12 @@
 
     Microsoft.WindowsAppSDK.ML
 
-    CMake configuration file for Microsoft.WindowsAppSDK.ML package. For consumption from a library, reference the
+    CMake configuration file for the Microsoft.WindowsAppSDK.ML package. For consumption from a library, reference the
     'Microsoft.WindowsAppSDK.ML' library to get the Cpp/WinRT projection of the Windows ML API:
 
-        add_nuget_library(Microsoft.WindowsAppSDK.ML <version>)
+        add_nuget_packages(Microsoft.WindowsAppSDK.ML <version>)
+
+        find_package(Microsoft.WindowsAppSDK.ML CONFIG REQUIRED)
 
         target_link_libraries(<your-target>
             PRIVATE
@@ -18,16 +20,37 @@
 
     Note: This package has a dependency on the 'Microsoft.Windows.CppWinRT' package which must also be specified in
     the consuming project.
-
 ====================================================================================================================]]#
+find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
+
 if(NOT (TARGET Microsoft.Windows.CppWinRT))
     message(FATAL_ERROR "Microsoft.Windows.CppWinRT not found. Ensure that the Microsoft.Windows.CppWinRT dependency is correctly specified.")
 endif()
 
+# Set the 'PLATFORM_IDENTIFIER' - mapping CMake constructs to the identifiers that the NuGet package layout uses.
+if(CMAKE_GENERATOR MATCHES "^Visual Studio")
+    set(PLATFORM_IDENTIFIER ${CMAKE_GENERATOR_PLATFORM})
+else()
+    set(PLATFORM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
+    if(PLATFORM_PROCESSOR STREQUAL "")
+        set(PLATFORM_PROCESSOR ${CMAKE_HOST_PROCESSOR})
+    endif()
+    if(PLATFORM_PROCESSOR STREQUAL "AMD64")
+        set(PLATFORM_IDENTIFIER "x64")
+    elseif(PLATFORM_PROCESSOR STREQUAL "ARM64")
+        set(PLATFORM_IDENTIFIER "arm64")
+    endif()
+    unset(PLATFORM_PROCESSOR)
+endif()
 
+if(PLATFORM_IDENTIFIER STREQUAL "")
+    message(FATAL_ERROR "Unable to determine the platform identifier.")
+endif()
 
-# TODO Figure out PLATFORM_IDENTIFIER
-set(PLATFORM_IDENTIFIER win-x64)
+# For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
+# For 'laid out' configuration, this should rely on the location of the current file.
+get_property(PACKAGE_LOCATION GLOBAL PROPERTY NUGET_LOCATION-MICROSOFT_WINDOWSAPPSDK_ML)
+get_property(PACKAGE_VERSION  GLOBAL PROPERTY NUGET_VERSION-MICROSOFT_WINDOWSAPPSDK_ML)
 
 #[[====================================================================================================================
     Target: Microsoft.WindowsAppSDK.ML
@@ -36,7 +59,7 @@ set(PLATFORM_IDENTIFIER win-x64)
 ====================================================================================================================]]#
 add_cppwinrt_projection(Microsoft.WindowsAppSDK.ML
     INPUTS
-        ${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/metadata/Microsoft.Windows.AI.MachineLearning.winmd
+        ${PACKAGE_LOCATION}/metadata/Microsoft.Windows.AI.MachineLearning.winmd
     OPTIMIZE
     DEPS
         Microsoft.Windows.CppWinRT
@@ -44,7 +67,7 @@ add_cppwinrt_projection(Microsoft.WindowsAppSDK.ML
 
 target_include_directories(Microsoft.WindowsAppSDK.ML
     INTERFACE
-        ${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/include
+        ${PACKAGE_LOCATION}/include
 )
 
 target_link_libraries(Microsoft.WindowsAppSDK.ML
@@ -71,7 +94,7 @@ target_include_directories(Microsoft.WindowsAppSDK.ML_Framework
 
 target_sources(Microsoft.WindowsAppSDK.ML_Framework
     INTERFACE
-        ${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/include/WindowsMLAutoInitializer.cpp
+        ${PACKAGE_LOCATION}/include/WindowsMLAutoInitializer.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Stub/winml/Runtime.cpp
 )
 
@@ -86,10 +109,18 @@ target_link_libraries(Microsoft.WindowsAppSDK.ML_Framework
 ====================================================================================================================]]#
 add_library(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime SHARED IMPORTED GLOBAL)
 
+set(FRAMEWORK_PATH "${PACKAGE_LOCATION}/runtimes-framework/win-${PLATFORM_IDENTIFIER}/native")
+set(FRAMEWORK_DLLS
+    "${FRAMEWORK_PATH}/onnxruntime.dll"
+    "${FRAMEWORK_PATH}/onnxruntime_providers_shared.dll"
+    "${FRAMEWORK_PATH}/DirectML.dll"
+    "${FRAMEWORK_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
+)
+
 set_target_properties(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
     PROPERTIES
-        IMPORTED_IMPLIB     "${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/runtimes/${PLATFORM_IDENTIFIER}/native/onnxruntime.lib"
-        IMPORTED_LOCATION   "${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/runtimes-framework/${PLATFORM_IDENTIFIER}/native/onnxruntime.dll;${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/runtimes-framework/${PLATFORM_IDENTIFIER}/native/onnxruntime_providers_shared.dll;${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/runtimes-framework/${PLATFORM_IDENTIFIER}/native/DirectML.dll;${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/runtimes-framework/${PLATFORM_IDENTIFIER}/native/Microsoft.Windows.AI.MachineLearning.dll"
+        IMPORTED_IMPLIB     "${PACKAGE_LOCATION}/runtimes/win-${PLATFORM_IDENTIFIER}/native/onnxruntime.lib"
+        IMPORTED_LOCATION   "${FRAMEWORK_DLLS}"
 )
 
 #[[====================================================================================================================
@@ -102,7 +133,7 @@ add_library(Microsoft.WindowsAppSDK.ML_SelfContained INTERFACE)
 target_sources(Microsoft.WindowsAppSDK.ML_SelfContained
     INTERFACE
         ${CMAKE_CURRENT_LIST_DIR}/microsoft.windowsappsdk.ml.manifest
-        ${NUGET_MICROSOFT_WINDOWSAPPSDK_ML}/include/WindowsMLAutoInitializer.SelfContained.cpp
+        ${PACKAGE_LOCATION}/include/WindowsMLAutoInitializer.SelfContained.cpp
 )
 
 target_link_libraries(Microsoft.WindowsAppSDK.ML_SelfContained
@@ -111,4 +142,8 @@ target_link_libraries(Microsoft.WindowsAppSDK.ML_SelfContained
         Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
 )
 
+unset(FRAMEWORK_DLLS)
+unset(FRAMEWORK_PATH)
+unset(PACKAGE_LOCATION)
+unset(PACKAGE_VERSION)
 unset(PLATFORM_IDENTIFIER)
