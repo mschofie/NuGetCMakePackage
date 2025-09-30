@@ -176,8 +176,29 @@ function(add_cppwinrt_projection TARGET_NAME)
     )
 endfunction()
 
+# Create the Microsoft.Windows.CppWinRT target. This projection is based on the Windows SDK version being used.
+#
+# The Windows SDK version is determined in the following order:
+#   1. CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION (set by Visual Studio generator)
+#   2. WindowsSDKVersion environment variable (set by Visual Studio developer command prompt, used by a Ninja generator)
+#
+# If neither has been set, the 'sdk' keyword is used to target the latest installed SDK.
+if("${CPPWINRT_SYSTEM_VERSION}" STREQUAL "")
+    if(NOT ("${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}" STREQUAL ""))
+        set(CPPWINRT_SYSTEM_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
+    elseif(DEFINED ENV{WindowsSDKVersion})
+        set(CPPWINRT_SYSTEM_VERSION "$ENV{WindowsSDKVersion}")
+
+        # $ENV{WindowsSDKVersion} may have trailing characters - e.g. "10.0.19041.0\" - removing anything that's not a
+        # '.'-delimited, four-part, integer version number
+        string(REGEX REPLACE "^([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1" CPPWINRT_SYSTEM_VERSION "${CPPWINRT_SYSTEM_VERSION}")
+    else()
+        set(CPPWINRT_SYSTEM_VERSION sdk)
+    endif()
+endif()
+
 add_cppwinrt_projection(Microsoft.Windows.CppWinRT
     INPUTS
-        ${CMAKE_SYSTEM_VERSION}
+        ${CPPWINRT_SYSTEM_VERSION}
     OPTIMIZE
 )
