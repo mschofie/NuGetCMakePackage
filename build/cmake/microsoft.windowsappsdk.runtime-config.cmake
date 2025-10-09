@@ -16,6 +16,7 @@
     License:
         See the LICENSE file in the package root for more information.
 ====================================================================================================================]]#
+include_guard()
 
 # For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
 # For 'laid out' configuration, this should rely on the location of the current file.

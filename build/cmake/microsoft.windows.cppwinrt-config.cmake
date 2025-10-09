@@ -16,6 +16,7 @@
     The 'Microsoft.Windows.CppWinRT' target represents the CppWinRT projection for the system version being targeted.
 
 ====================================================================================================================]]#
+include_guard()
 
 #[[====================================================================================================================
     add_cppwinrt_projection

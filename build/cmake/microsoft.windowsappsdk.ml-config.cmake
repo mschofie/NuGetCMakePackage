@@ -21,6 +21,8 @@
     Note: This package has a dependency on the 'Microsoft.Windows.CppWinRT' package which must also be specified in
     the consuming project.
 ====================================================================================================================]]#
+include_guard()
+
 find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
 
 if(NOT (TARGET Microsoft.Windows.CppWinRT))
