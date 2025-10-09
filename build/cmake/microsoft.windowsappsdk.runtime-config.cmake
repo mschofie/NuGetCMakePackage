@@ -18,17 +18,16 @@
 ====================================================================================================================]]#
 include_guard()
 
-# For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
-# For 'laid out' configuration, this should rely on the location of the current file.
-get_property(PACKAGE_LOCATION GLOBAL PROPERTY NUGET_LOCATION-MICROSOFT_WINDOWSAPPSDK_RUNTIME)
-get_property(PACKAGE_VERSION  GLOBAL PROPERTY NUGET_VERSION-MICROSOFT_WINDOWSAPPSDK_RUNTIME)
+block(SCOPE_FOR VARIABLES)
+    # For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
+    # For 'laid out' configuration, this should rely on the location of the current file.
+    get_property(PACKAGE_LOCATION GLOBAL PROPERTY NUGET_LOCATION-MICROSOFT_WINDOWSAPPSDK_RUNTIME)
+    get_property(PACKAGE_VERSION  GLOBAL PROPERTY NUGET_VERSION-MICROSOFT_WINDOWSAPPSDK_RUNTIME)
 
-add_library(Microsoft.WindowsAppSDK.Runtime INTERFACE)
+    add_library(Microsoft.WindowsAppSDK.Runtime INTERFACE)
 
-target_include_directories(Microsoft.WindowsAppSDK.Runtime
-    INTERFACE
-        ${PACKAGE_LOCATION}/include
-)
-
-unset(PACKAGE_LOCATION)
-unset(PACKAGE_VERSION)
+    target_include_directories(Microsoft.WindowsAppSDK.Runtime
+        INTERFACE
+            ${PACKAGE_LOCATION}/include
+    )
+endblock()
