@@ -24,6 +24,9 @@
 include_guard()
 
 find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
+find_package(Microsoft.WindowsAppSDK.Runtime CONFIG REQUIRED)
+find_package(Microsoft.WindowsAppSDK.Foundation CONFIG REQUIRED)
+find_package(Microsoft.WindowsAppSDK.InteractiveExperiences CONFIG REQUIRED)
 
 if(NOT (TARGET Microsoft.Windows.CppWinRT))
     message(FATAL_ERROR "Microsoft.Windows.CppWinRT not found. Ensure that the Microsoft.Windows.CppWinRT dependency is correctly specified.")
@@ -72,12 +75,6 @@ block(SCOPE_FOR VARIABLES)
             ${PACKAGE_LOCATION}/include
     )
 
-    target_link_libraries(Microsoft.WindowsAppSDK.ML
-        INTERFACE
-            ole32.lib
-            oleaut32.lib
-    )
-
     #[[====================================================================================================================
         Target: Microsoft.WindowsAppSDK.ML_Framework
         The target for the framework dependencies of the Windows AI Machine Learning library.
@@ -109,6 +106,7 @@ block(SCOPE_FOR VARIABLES)
 
     #[[====================================================================================================================
     ====================================================================================================================]]#
+
     add_library(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime SHARED IMPORTED GLOBAL)
 
     set(FRAMEWORK_PATH "${PACKAGE_LOCATION}/runtimes-framework/win-${PLATFORM_IDENTIFIER}/native")
@@ -142,5 +140,9 @@ block(SCOPE_FOR VARIABLES)
         INTERFACE
             Microsoft.WindowsAppSDK.ML
             Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
+
+            Microsoft.WindowsAppSDK.Runtime
+            Microsoft.WindowsAppSDK.Foundation_SelfContained
+            Microsoft.WindowsAppSDK.InteractiveExperiences_SelfContained
     )
 endblock()
