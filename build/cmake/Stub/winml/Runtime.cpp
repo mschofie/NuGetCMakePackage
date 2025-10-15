@@ -2,7 +2,7 @@
 
 #include <appmodel.h>
 #include <winml/onnxruntime_cxx_api.h>
-#include <WindowsAppSDK-VersionInfo.h> // Should be a WinML-scoped package...?
+#include <WindowsAppSDK-VersionInfo.h>
 
 #define MICROSOFT_WINDOWSAPPSDK_ML_PACKAGE_FAMILY_NAME_W WINDOWSAPPSDK_RUNTIME_PACKAGE_FRAMEWORK_PACKAGEFAMILYNAME_W
 

@@ -2,13 +2,17 @@
 
 This repository contains common infrastructure for using NuGet packages from within CMake.
 
+> [!IMPORTANT]
+> This is an experimental repository! It is exploring possibilities for NuGet and CMake integration. Please try things
+> out and provide feedback - either good or bad! File issues or open discussions and help influence the direction.
+
 ## Usage
 
 This repository is intended to be consumed through [CMake's FetchContent package][cmake-fetchcontent]. Consumers should add a call to [`FetchContent_Declare`][fetchcontent_declare] to declare the content details:
 
 ```cmake
 FetchContent_Declare(
-    CMakeNuGetPackage
+    NuGetCMakePackage
     GIT_REPOSITORY https://github.com/mschofie/NuGetCMakePackage
     GIT_TAG 0123456789abcdef0123456789abcdef01234567
 )
@@ -19,7 +23,7 @@ where `GIT_REPOSITORY` specifies this repository, and `GIT_TAG` is the commit ha
 Having declared the content, make a call to [`FetchContent_MakeAvailable`][fetchcontent_makeavailable] to instruct CMake to download and process the content:
 
 ```cmake
-FetchContent_MakeAvailable(CMakeNuGetPackage)
+FetchContent_MakeAvailable(NuGetCMakePackage)
 ```
 
 After calling `FetchContent_MakeAvailable` two main functions are available for leveraging NuGet packages: `install_nuget_package` and `add_nuget_packages`.

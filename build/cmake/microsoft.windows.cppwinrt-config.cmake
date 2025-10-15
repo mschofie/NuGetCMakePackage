@@ -68,7 +68,7 @@ function(add_cppwinrt_projection TARGET_NAME)
     cmake_parse_arguments(PARSE_ARGV 1 CPPWINRT "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
 
     if(NOT CPPWINRT_VERSION)
-        message(FATAL_ERROR "add_cppwinrt_projection: VERSION must be specified.")
+        message(FATAL_ERROR "add_cppwinrt_projection: VERSION must be specified, or CPPWINRT_VERSION must be set.")
     endif()
 
     if(NOT CPPWINRT_PROJECTION_ROOT_PATH)
