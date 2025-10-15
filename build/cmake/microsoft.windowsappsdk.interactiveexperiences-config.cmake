@@ -106,6 +106,11 @@ block(SCOPE_FOR VARIABLES)
             ${CMAKE_CURRENT_LIST_DIR}/Microsoft.WindowsAppSDK.InteractiveExperiences.manifest
     )
 
+    target_link_options(Microsoft.WindowsAppSDK.InteractiveExperiences_SelfContained
+        INTERFACE
+            /MANIFEST
+    )
+
     target_link_libraries(Microsoft.WindowsAppSDK.InteractiveExperiences_SelfContained
         INTERFACE
             Microsoft.WindowsAppSDK.InteractiveExperiences

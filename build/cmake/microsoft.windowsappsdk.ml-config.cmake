@@ -136,6 +136,11 @@ block(SCOPE_FOR VARIABLES)
             ${PACKAGE_LOCATION}/include/WindowsMLAutoInitializer.SelfContained.cpp
     )
 
+    target_link_options(Microsoft.WindowsAppSDK.ML_SelfContained
+        INTERFACE
+            /MANIFEST
+    )
+
     target_link_libraries(Microsoft.WindowsAppSDK.ML_SelfContained
         INTERFACE
             Microsoft.WindowsAppSDK.ML

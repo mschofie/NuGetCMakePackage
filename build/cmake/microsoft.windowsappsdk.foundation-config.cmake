@@ -108,6 +108,11 @@ block(SCOPE_FOR VARIABLES)
             ${CMAKE_CURRENT_LIST_DIR}/Microsoft.WindowsAppSDK.Foundation.manifest
     )
 
+    target_link_options(Microsoft.WindowsAppSDK.Foundation_SelfContained
+        INTERFACE
+            /MANIFEST
+    )
+
     target_link_libraries(Microsoft.WindowsAppSDK.Foundation_SelfContained
         INTERFACE
             Microsoft.WindowsAppSDK.Foundation
