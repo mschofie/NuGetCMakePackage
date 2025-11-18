@@ -117,11 +117,19 @@ block(SCOPE_FOR VARIABLES)
         "${FRAMEWORK_PATH}/Microsoft.Windows.AI.MachineLearning.dll"
     )
 
-    set_target_properties(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
-        PROPERTIES
-            IMPORTED_IMPLIB     "${PACKAGE_LOCATION}/runtimes/win-${PLATFORM_IDENTIFIER}/native/onnxruntime.lib"
-            IMPORTED_LOCATION   "${FRAMEWORK_DLLS}"
-    )
+    if(PACKAGE_VERSION VERSION_GREATER_EQUAL "1.8.2109")
+        set_target_properties(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
+            PROPERTIES
+                IMPORTED_IMPLIB     "${PACKAGE_LOCATION}/lib/native/${PLATFORM_IDENTIFIER}/onnxruntime.lib"
+                IMPORTED_LOCATION   "${FRAMEWORK_DLLS}"
+        )
+    else()
+        set_target_properties(Microsoft.WindowsAppSDK.ML_SelfContainedRuntime
+            PROPERTIES
+                IMPORTED_IMPLIB     "${PACKAGE_LOCATION}/runtimes/win-${PLATFORM_IDENTIFIER}/native/onnxruntime.lib"
+                IMPORTED_LOCATION   "${FRAMEWORK_DLLS}"
+        )
+    endif()
 
     #[[====================================================================================================================
         Target: Microsoft.WindowsAppSDK.ML_SelfContained
