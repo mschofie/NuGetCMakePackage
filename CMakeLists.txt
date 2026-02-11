@@ -11,14 +11,14 @@ endif()
 
 define_property(VARIABLE
     PROPERTY NUGET_TOOLS_PATH
-    BRIEF_DOCS "The path where the NuGet executable will be installed if it cannot be found."
+    BRIEF_DOCS "The path where the NuNuGet executable will be installed if it cannot be found."
     FULL_DOCS [=[
-If needed, the NuGet executable will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set, then it
+If needed, the NuNuGet executable will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set, then it
 will be downloaded to `${CMAKE_BINARY_DIR}/__tools`.
 
 Note: Since `CMAKE_BINARY_DIR` is platform specific, the default download location will change by platform, resulting
 in NuGet being downloaded once for each platform that is built. Setting `NUGET_TOOLS_PATH` to a platform-independent
-path (e.g. relative to the root of the repository) will allow NuGet to be downloaded once for all platforms.
+path (e.g. relative to the root of the repository) will allow NuNuGet to be downloaded once for all platforms.
 ]=])
 
 define_property(TARGET
@@ -32,6 +32,81 @@ define_property(TARGET
 )
 
 #[[====================================================================================================================
+    ensure_nunuget
+    --------------
+
+    Ensures that NuNuGet is available and the NUNUGET_PATH variables is set in the cache. The following steps will be
+    taken:
+
+        1. If `NUNUGET_PATH` is set, then that value will be used.
+        2. If NuNuGet is found through `find_program`, that path will be used.
+        3. NuNuGet will be downloaded into the `NUGET_TOOLS_PATH` and `NUNUGET_PATH` will be set to the download
+        location. If `NUGET_TOOLS_PATH` is not set, then it will default to `${CMAKE_BINARY_DIR}/__tools`.
+====================================================================================================================]]#
+function(ensure_nunuget)
+    find_program(NUNUGET_PATH
+        NAMES nunuget nunuget.exe
+    )
+
+    if(NUNUGET_PATH)
+        set(NUNUGET_PATH ${NUNUGET_PATH} CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+        return()
+    endif()
+
+    # Check for a custom tools path, and if it doesn't exist, default to '${CMAKE_BINARY_DIR}/__tools'
+    if(NOT NUGET_TOOLS_PATH)
+        set(NUGET_TOOLS_PATH "${CMAKE_BINARY_DIR}/__tools")
+    endif()
+
+    if(NOT EXISTS "${NUGET_TOOLS_PATH}")
+        file(MAKE_DIRECTORY "${NUGET_TOOLS_PATH}")
+    endif()
+
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+        set(PACKAGE_SYSTEM "linux")
+        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64")
+            set(PACKAGE_ARCH "arm64")
+            set(PACKAGE_HASH "SHA256=9eba8b2427bd29c6314f363bfd32aa06128966094c8a67aa81cb35dbe799a01d")
+        elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+            set(PACKAGE_ARCH "x64")
+            set(PACKAGE_HASH "SHA256=24e7e497ee13da55d45e29b1fc375b62b6b3fbe7002baa3d65bfa6b287f4f839")
+        endif()
+    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+        set(PACKAGE_SYSTEM "win")
+        if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "ARM64")
+            set(PACKAGE_ARCH "arm64")
+            set(PACKAGE_HASH "SHA256=d001df1d382abe43286105ee3bdbea2f678a669ec6f0bfc0929b41c5bea36939")
+        elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "AMD64")
+            set(PACKAGE_ARCH "x64")
+            set(PACKAGE_HASH "SHA256=90199d05cd8ecb461f9e6334430ec01d79db1f334528d6db0766976151412e6c")
+        endif()
+    else()
+        message(FATAL_ERROR "ensure_nunuget: Unsupported system name '${CMAKE_HOST_SYSTEM_NAME}'")
+    endif()
+
+    if(NOT PACKAGE_ARCH)
+        message(FATAL_ERROR "ensure_nunuget: Unsupported system processor '${CMAKE_HOST_SYSTEM_PROCESSOR}'")
+    endif()
+
+    set(PACKAGE_NAME "MSchofie.NuNuGet.${PACKAGE_SYSTEM}-${PACKAGE_ARCH}")
+    set(PACKAGE_VERSION "0.1.16-beta")
+
+    set(PACKAGE_URL "https://github.com/mschofie/NuNuGet/releases/download/v${PACKAGE_VERSION}/${PACKAGE_NAME}.${PACKAGE_VERSION}.nupkg")
+    set(PACKAGE_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}.nupkg")
+
+    file(DOWNLOAD "${PACKAGE_URL}" "${PACKAGE_PATH}"
+        EXPECTED_HASH ${PACKAGE_HASH}
+    )
+
+    file(ARCHIVE_EXTRACT
+        INPUT "${PACKAGE_PATH}"
+        DESTINATION "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/"
+    )
+
+    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/nunuget.exe" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+endfunction()
+
+#[[====================================================================================================================
     add_nuget_packages
     ------------------
 
@@ -42,12 +117,26 @@ define_property(TARGET
             <PACKAGES
                 [<package name> <package version>]*
             >
-            [CONFIG_FILE <config file path>]
+            CONFIG_FILE <config file path>
+            LOCK_FILE <lock file path>
             [FRAMEWORK <framework>]
-            [DEPENDENCYVERSION <Lowest|HighestPatch|HighestMinor|Highest|Ignore>]
-            [PACKAGESAVEMODE <nuspec|nupkg>]
-            [PRERELEASE <ON|OFF>]
         )
+
+    Note:
+        * Package versions can use floating version syntax, according to [the NuGet documentation on Package versioning](https://learn.microsoft.com/en-us/nuget/concepts/package-versioning).
+
+        * `CONFIG_FILE` is the path to the NuGet.config file that should be used when resolving the NuGet packages.
+            Only the specified config file will be used.
+
+        * `LOCK_FILE` is the path to the lock file that will be generated/used when resolving the NuGet packages. If
+            the specified lock file already exists, then it will be used to resolve the packages, and if there are any
+            discrepancies between the specified packages and the packages in the lock file, then an error will be
+            reported. If the specified lock file does not exist, then it will be generated with the resolved packages.
+
+            The lock file should be in the source tree and checked into source control to ensure consistent package
+            resolution across different machines and build configurations.
+
+        * `FRAMEWORK` is an optional argument that specifies the target framework to use.
 
     After calling 'add_nuget_packages' the following GLOBAL properties will be set:
 
@@ -66,6 +155,10 @@ define_property(TARGET
         add_nuget_packages(
             PACKAGES
                 Microsoft.Windows.ImplementationLibrary 1.0.240803.1
+            CONFIG_FILE
+                <config file path>
+            LOCK_FILE
+                <lock file path>
         )
         ```
 
@@ -85,11 +178,26 @@ function(add_nuget_packages)
     block(SCOPE_FOR POLICIES)
         cmake_policy(SET CMP0174 NEW) # cmake_parse_arguments(PARSE_ARGV) defines a variable for an empty string after a single-value keyword.
 
+        message(CHECK_START "Installing NuGet packages")
+        list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
         set(OPTIONS)
-        set(ONE_VALUE_KEYWORDS CONFIG_FILE DEPENDENCYVERSION PACKAGESAVEMODE PRERELEASE)
+        set(ONE_VALUE_KEYWORDS CONFIG_FILE LOCK_FILE FRAMEWORK)
         set(MULTI_VALUE_KEYWORDS PACKAGES)
 
         cmake_parse_arguments(PARSE_ARGV 0 ADD_NUGET "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
+
+        if(NOT ADD_NUGET_FRAMEWORK)
+            set(ADD_NUGET_FRAMEWORK "any")
+        endif()
+
+        if(NOT ADD_NUGET_CONFIG_FILE)
+            message(FATAL_ERROR "add_nuget_packages: 'CONFIG_FILE' is required.")
+        endif()
+
+        if(NOT ADD_NUGET_LOCK_FILE)
+            message(FATAL_ERROR "add_nuget_packages: 'LOCK_FILE' is required.")
+        endif()
 
         # Get policy CMP0074:
         #   if OLD, the '${PACKAGE_NAME}_DIR' should point to the NuGet package location
@@ -101,14 +209,9 @@ function(add_nuget_packages)
         #   if NEW, the '${PACKAGE_NAME_UPPER}_ROOT' should point to the NuGet package location
         cmake_policy(GET CMP0144 POLICY_CMP0144)
 
-        # Ensure that 'ADD_NUGET_PACKAGESAVEMODE' has - at least 'nuspec'
-        if (ADD_NUGET_PACKAGESAVEMODE STREQUAL "")
-            set(ADD_NUGET_PACKAGESAVEMODE nuspec)
-        elseif(NOT (ADD_NUGET_PACKAGESAVEMODE MATCHES "nuspec"))
-            set(ADD_NUGET_PACKAGESAVEMODE "${ADD_NUGET_PACKAGESAVEMODE};nuspec")
-        endif()
-
-        # Enumerate the packages and 'install' each one.
+        # Enumerate the packages and convert them into a JSON array to pass to NuNuGet, which will resolve the packages
+        # and output the resolved package versions and paths to the specified lock file.
+        set(PACKAGE_ENTRIES)
         while(ADD_NUGET_PACKAGES)
             list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_NAME)
             list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_VERSION)
@@ -116,6 +219,68 @@ function(add_nuget_packages)
             if((PACKAGE_NAME STREQUAL "") OR (PACKAGE_VERSION STREQUAL ""))
                 message(FATAL_ERROR "add_nuget_packages: 'PACKAGES' must be passed valid NuGet name/version pairs.")
             endif()
+
+            list(APPEND PACKAGE_ENTRIES "{ \"id\": \"${PACKAGE_NAME}\", \"version\": \"${PACKAGE_VERSION}\" }")
+        endwhile()
+
+        # Configure the JSON file to pass to NuNuGet with the list of packages to resolve.
+        list(JOIN PACKAGE_ENTRIES ",\n    " PACKAGE_ENTRIES)
+        configure_file(
+            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/packages.list.json.in"
+            "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.packages.list.json"
+            @ONLY
+        )
+
+        # Make sure that 'nunuget' is available, then invoke it to install the packages to the global packages path.
+        ensure_nunuget()
+        message(VERBOSE "Invoking NuNuGet with the following arguments: --configFile ${ADD_NUGET_CONFIG_FILE} --listFile ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.packages.list.json --lockFile ${ADD_NUGET_LOCK_FILE}")
+        execute_process(
+            COMMAND "${NUNUGET_PATH}" install
+                --configFile "${ADD_NUGET_CONFIG_FILE}"
+                --listFile "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.packages.list.json"
+                --lockFile "${ADD_NUGET_LOCK_FILE}"
+                --verbose
+            RESULT_VARIABLE NUNUGET_RESULT
+            OUTPUT_VARIABLE NUNUGET_OUTPUT
+            ERROR_VARIABLE NUNUGET_ERROR
+        )
+
+        if(NUNUGET_RESULT)
+            if(NUNUGET_RESULT EQUAL 100)
+                message(FATAL_ERROR "add_nuget_packages: The specified NuGet packages differ from the lock file: ${ADD_NUGET_LOCK_FILE}.\nPlease delete the lock file and re-run configuration to regenerate the lock file with the updated packages.")
+            endif()
+            message(FATAL_ERROR "add_nuget_packages: NuNuGet failed with error: ${NUNUGET_ERROR}")
+        endif()
+
+        # Convert the output from NuNuGet into a list of lines to parse the resolved packages and their paths.
+        string(REGEX REPLACE "\r?\n\r?" ";" NUNUGET_OUTPUT "${NUNUGET_OUTPUT}")
+
+        while(NUNUGET_OUTPUT)
+            list(POP_FRONT NUNUGET_OUTPUT PACKAGE_LINE)
+            if(PACKAGE_LINE MATCHES "GlobalPackagesPath: (.+)")
+                set(GLOBAL_PACKAGES_PATH "${CMAKE_MATCH_1}")
+                break()
+            endif()
+        endwhile()
+
+        if(NOT GLOBAL_PACKAGES_PATH)
+            message(FATAL_ERROR "add_nuget_packages: Unable to identify the global packages path.")
+        endif()
+        message(VERBOSE "Global packages path: ${GLOBAL_PACKAGES_PATH}")
+
+        # Parse the packages from NuNuGet output.
+        while(NUNUGET_OUTPUT)
+            list(POP_FRONT NUNUGET_OUTPUT PACKAGE_LINE)
+            if(NOT (PACKAGE_LINE MATCHES "Package: ([^\\]*)/(.*)"))
+                continue()
+            endif()
+
+            set(PACKAGE_NAME ${CMAKE_MATCH_1})
+            set(PACKAGE_VERSION ${CMAKE_MATCH_2})
+
+            message(STATUS "NuGet package: ${PACKAGE_NAME}/${PACKAGE_VERSION}")
+
+            cmake_path(SET NUGET_LOCATION NORMALIZE "${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME}/${PACKAGE_VERSION}")
 
             # Build 'PACKAGE_NAME_PROPERTY' - the CMake-property friendly form of PACKAGE_NAME.
             #   1. convert to uppercase to follow CMake variable naming conventions
@@ -136,13 +301,11 @@ function(add_nuget_packages)
                 message(FATAL_ERROR "add_nuget_packages: The package '${PACKAGE_NAME}' has already been added with version ${EXISTING_VERSION} - unable to add version ${PACKAGE_VERSION}.")
             endif()
 
-            install_nuget_package(${PACKAGE_NAME} ${PACKAGE_VERSION} NUGET_LOCATION
-                PRERELEASE ${ADD_NUGET_PRERELEASE}
-                FRAMEWORK ${ADD_NUGET_FRAMEWORK}
-                CONFIG_FILE ${ADD_NUGET_CONFIG_FILE}
-                PACKAGESAVEMODE ${ADD_NUGET_PACKAGESAVEMODE}
-                DEPENDENCYVERSION ${ADD_NUGET_DEPENDENCYVERSION}
-            )
+            message(VERBOSE "Setting 'NUGET_VERSION-${PACKAGE_NAME_PROPERTY}' to ${PACKAGE_VERSION}")
+            set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
+
+            message(VERBOSE "Setting 'NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}' to ${NUGET_LOCATION}")
+            set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
 
             # Look for package details in the NuGet - if they exist, set the relevant property to reference it
             # so that find_package can find it.
@@ -172,10 +335,15 @@ function(add_nuget_packages)
                     set(${PACKAGE_NAME}_DIR ${PROBE_FOLDER} PARENT_SCOPE)
                 endif()
 
-                set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
-                set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
                 break()
             endforeach()
         endwhile()
+
+        # Add the lock file as a dependency for the directory, so that if the lock file changes, CMake will re-run
+        # configuration. This allows NuGet versions to be re-resolved by deleting the lock file.
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${ADD_NUGET_LOCK_FILE}")
+
+        list(POP_BACK CMAKE_MESSAGE_INDENT)
+        message(CHECK_PASS "done")
     endblock()
 endfunction()
