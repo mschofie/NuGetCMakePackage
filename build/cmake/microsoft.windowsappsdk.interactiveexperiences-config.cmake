@@ -95,9 +95,19 @@ block(SCOPE_FOR VARIABLES)
         "${FRAMEWORK_PATH}/wuceffectsi.dll"
     )
 
+    if(PACKAGE_VERSION VERSION_GREATER_EQUAL "2.0")
+        set(FRAMEWORK_LIBS
+            "${PACKAGE_LOCATION}/lib/native/${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+        )
+    else()
+        set(FRAMEWORK_LIBS
+            "${PACKAGE_LOCATION}/lib/native/win10-${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+        )
+    endif()
+
     set_target_properties(Microsoft.WindowsAppSDK.InteractiveExperiences_SelfContainedRuntime
         PROPERTIES
-            IMPORTED_IMPLIB "${PACKAGE_LOCATION}/lib/native/win10-${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+            IMPORTED_IMPLIB "${FRAMEWORK_LIBS}"
             IMPORTED_LOCATION "${FRAMEWORK_DLLS}"
     )
 
