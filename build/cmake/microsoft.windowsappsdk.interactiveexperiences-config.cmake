@@ -18,6 +18,12 @@
 ====================================================================================================================]]#
 include_guard()
 
+# Check for minimum CMake version. Avoid using `cmake_minimum_required`, which will reset policies if this file is
+# included by a project that has already specified a minimum CMake version.
+if(CMAKE_VERSION VERSION_LESS 3.31)
+    message(FATAL_ERROR "Microsoft.WindowsAppSDK.InteractiveExperiences requires at least CMake 3.31, but CMake ${CMAKE_VERSION} is in use.")
+endif()
+
 find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
 
 if(NOT (TARGET Microsoft.Windows.CppWinRT))
@@ -93,9 +99,19 @@ block(SCOPE_FOR VARIABLES)
         "${FRAMEWORK_PATH}/wuceffectsi.dll"
     )
 
+    if(PACKAGE_VERSION VERSION_GREATER_EQUAL "2.0")
+        set(FRAMEWORK_LIBS
+            "${PACKAGE_LOCATION}/lib/native/${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+        )
+    else()
+        set(FRAMEWORK_LIBS
+            "${PACKAGE_LOCATION}/lib/native/win10-${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+        )
+    endif()
+
     set_target_properties(Microsoft.WindowsAppSDK.InteractiveExperiences_SelfContainedRuntime
         PROPERTIES
-            IMPORTED_IMPLIB "${PACKAGE_LOCATION}/lib/native/win10-${PLATFORM_IDENTIFIER}/Microsoft.UI.Dispatching.lib"
+            IMPORTED_IMPLIB "${FRAMEWORK_LIBS}"
             IMPORTED_LOCATION "${FRAMEWORK_DLLS}"
     )
 

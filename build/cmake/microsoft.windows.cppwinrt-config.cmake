@@ -18,6 +18,12 @@
 ====================================================================================================================]]#
 include_guard()
 
+# Check for minimum CMake version. Avoid using `cmake_minimum_required`, which will reset policies if this file is
+# included by a project that has already specified a minimum CMake version.
+if(CMAKE_VERSION VERSION_LESS 3.31)
+    message(FATAL_ERROR "Microsoft.Windows.CppWinRT requires at least CMake 3.31, but CMake ${CMAKE_VERSION} is in use.")
+endif()
+
 #[[====================================================================================================================
     add_cppwinrt_projection
     -----------------------
