@@ -23,7 +23,11 @@
 ====================================================================================================================]]#
 include_guard()
 
-cmake_minimum_required(VERSION 3.31)
+# Check for minimum CMake version. Avoid using `cmake_minimum_required`, which will reset policies if this file is
+# included by a project that has already specified a minimum CMake version.
+if(CMAKE_VERSION VERSION_LESS 3.31)
+    message(FATAL_ERROR "Microsoft.WindowsAppSDK.ML requires at least CMake 3.31, but CMake ${CMAKE_VERSION} is in use.")
+endif()
 
 find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
 find_package(Microsoft.WindowsAppSDK.Runtime CONFIG REQUIRED)
