@@ -1,6 +1,13 @@
 #[[====================================================================================================================
 ====================================================================================================================]]#
+
 include_guard()
+
+# Check for minimum CMake version. Avoid using `cmake_minimum_required`, which will reset policies if this file is
+# included by a project that has already specified a minimum CMake version.
+if(CMAKE_VERSION VERSION_LESS 3.31)
+    message(FATAL_ERROR "NuGetCMakePackage requires at least CMake 3.31, but CMake ${CMAKE_VERSION} is in use.")
+endif()
 
 define_property(VARIABLE
     PROPERTY NUGET_PACKAGE_ROOT_PATH
@@ -58,10 +65,10 @@ function(ensure_nuget)
     # If NuGet isn't found, download it.
     #
     # NuGet.exe will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set then it will be downloaded to '${CMAKE_BINARY_DIR}/__tools'.
-    if(NUGET_PATH STREQUAL "NUGET_PATH-NOTFOUND")
+    if(NOT NUGET_PATH)
         if(NOT NUGET_VERSION)
-            set(NUGET_VERSION "6.14.0")
-            set(NUGET_HASH "SHA256=92dbed160ddee0f64b901e907439e021211b428e57c089ecc12fc38dcc4bd9a5")
+            set(NUGET_VERSION "7.3.0")
+            set(NUGET_HASH "SHA256=39b6309e76c832e4de2ac7f86da9a8afaa12bc5b4307ea335e9d69e2d6d1a94a")
         else()
             if(NOT NUGET_HASH)
                 message(FATAL_ERROR "NUGET_VERSION is set to ${NUGET_VERSION}. NUGET_HASH must be set if NUGET_VERSION is set.")
@@ -103,63 +110,67 @@ endfunction()
     packages will be downloaded to `${CMAKE_BINARY_DIR}/__nuget`.
 ====================================================================================================================]]#
 function(install_nuget_package NUGET_PACKAGE_NAME NUGET_PACKAGE_VERSION VARIABLE_NAME)
-    set(OPTIONS)
-    set(ONE_VALUE_KEYWORDS CONFIG_FILE FRAMEWORK PRERELEASE PACKAGESAVEMODE DEPENDENCYVERSION)
-    set(MULTI_VALUE_KEYWORDS)
+    block(SCOPE_FOR POLICIES)
+        cmake_policy(SET CMP0174 NEW) # cmake_parse_arguments(PARSE_ARGV) defines a variable for an empty string after a single-value keyword.
 
-    cmake_parse_arguments(PARSE_ARGV 3 NUGET "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
+        set(OPTIONS)
+        set(ONE_VALUE_KEYWORDS CONFIG_FILE FRAMEWORK PRERELEASE PACKAGESAVEMODE DEPENDENCYVERSION)
+        set(MULTI_VALUE_KEYWORDS)
 
-    if(NOT NUGET_PACKAGE_ROOT_PATH)
-        set(NUGET_PACKAGE_ROOT_PATH ${CMAKE_BINARY_DIR}/__nuget)
-    endif()
+        cmake_parse_arguments(PARSE_ARGV 3 NUGET "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
 
-    set(NUGET_PACKAGE_PATH "${NUGET_PACKAGE_ROOT_PATH}/${NUGET_PACKAGE_NAME}.${NUGET_PACKAGE_VERSION}")
-
-    if(NOT EXISTS "${NUGET_PACKAGE_PATH}")
-        ensure_nuget()
-
-        set(NUGET_COMMAND ${NUGET_PATH} install ${NUGET_PACKAGE_NAME})
-
-        list(APPEND NUGET_COMMAND -OutputDirectory ${NUGET_PACKAGE_ROOT_PATH})
-        list(APPEND NUGET_COMMAND -Version ${NUGET_PACKAGE_VERSION})
-
-        if(NUGET_PRERELEASE)
-            list(APPEND NUGET_COMMAND -Prerelease)
+        if(NOT NUGET_PACKAGE_ROOT_PATH)
+            set(NUGET_PACKAGE_ROOT_PATH ${CMAKE_BINARY_DIR}/__nuget)
         endif()
 
-        if(NUGET_CONFIG_FILE)
-            list(APPEND NUGET_COMMAND -ConfigFile ${NUGET_CONFIG_FILE})
+        set(NUGET_PACKAGE_PATH "${NUGET_PACKAGE_ROOT_PATH}/${NUGET_PACKAGE_NAME}.${NUGET_PACKAGE_VERSION}")
+
+        if(NOT EXISTS "${NUGET_PACKAGE_PATH}")
+            ensure_nuget()
+
+            set(NUGET_COMMAND ${NUGET_PATH} install ${NUGET_PACKAGE_NAME})
+
+            list(APPEND NUGET_COMMAND -OutputDirectory ${NUGET_PACKAGE_ROOT_PATH})
+            list(APPEND NUGET_COMMAND -Version ${NUGET_PACKAGE_VERSION})
+
+            if(NUGET_PRERELEASE)
+                list(APPEND NUGET_COMMAND -Prerelease)
+            endif()
+
+            if(NUGET_CONFIG_FILE)
+                list(APPEND NUGET_COMMAND -ConfigFile ${NUGET_CONFIG_FILE})
+            endif()
+
+            if(NUGET_FRAMEWORK)
+                list(APPEND NUGET_COMMAND -Framework ${NUGET_FRAMEWORK})
+            endif()
+
+            if(NUGET_PACKAGESAVEMODE)
+                list(APPEND NUGET_COMMAND -PackageSaveMode ${NUGET_PACKAGESAVEMODE})
+            endif()
+
+            if(NUGET_DEPENDENCYVERSION)
+                list(APPEND NUGET_COMMAND -DependencyVersion ${NUGET_DEPENDENCYVERSION})
+            endif()
+
+            message(STATUS "Downloading ${NUGET_PACKAGE_NAME} ${NUGET_PACKAGE_VERSION}")
+            message(VERBOSE "install_nuget_package: NUGET_COMMAND = ${NUGET_COMMAND}")
+
+            execute_process(
+                COMMAND ${NUGET_COMMAND}
+                OUTPUT_VARIABLE NUGET_OUTPUT
+                ERROR_VARIABLE NUGET_ERROR
+                RESULT_VARIABLE NUGET_RESULT
+            )
+
+            message(VERBOSE "install_nuget_package: NUGET_OUTPUT = ${NUGET_OUTPUT}")
+            if(NOT (NUGET_RESULT STREQUAL 0))
+                message(FATAL_ERROR "install_nuget_package: Install failed with: ${NUGET_ERROR}")
+            endif()
         endif()
 
-        if(NUGET_FRAMEWORK)
-            list(APPEND NUGET_COMMAND -Framework ${NUGET_FRAMEWORK})
-        endif()
-
-        if(NUGET_PACKAGESAVEMODE)
-            list(APPEND NUGET_COMMAND -PackageSaveMode ${NUGET_PACKAGESAVEMODE})
-        endif()
-
-        if(NUGET_DEPENDENCYVERSION)
-            list(APPEND NUGET_COMMAND -DependencyVersion ${NUGET_DEPENDENCYVERSION})
-        endif()
-
-        message(STATUS "Downloading ${NUGET_PACKAGE_NAME} ${NUGET_PACKAGE_VERSION}")
-        message(VERBOSE "install_nuget_package: NUGET_COMMAND = ${NUGET_COMMAND}")
-
-        execute_process(
-            COMMAND ${NUGET_COMMAND}
-            OUTPUT_VARIABLE NUGET_OUTPUT
-            ERROR_VARIABLE NUGET_ERROR
-            RESULT_VARIABLE NUGET_RESULT
-        )
-
-        message(VERBOSE "install_nuget_package: NUGET_OUTPUT = ${NUGET_OUTPUT}")
-        if(NOT (NUGET_RESULT STREQUAL 0))
-            message(FATAL_ERROR "install_nuget_package: Install failed with: ${NUGET_ERROR}")
-        endif()
-    endif()
-
-    set(${VARIABLE_NAME} "${NUGET_PACKAGE_PATH}" PARENT_SCOPE)
+        set(${VARIABLE_NAME} "${NUGET_PACKAGE_PATH}" PARENT_SCOPE)
+    endblock()
 endfunction()
 
 #[[====================================================================================================================
@@ -213,96 +224,100 @@ endfunction()
 
 ====================================================================================================================]]#
 function(add_nuget_packages)
-    set(OPTIONS)
-    set(ONE_VALUE_KEYWORDS CONFIG_FILE DEPENDENCYVERSION PACKAGESAVEMODE PRERELEASE)
-    set(MULTI_VALUE_KEYWORDS PACKAGES)
+    block(SCOPE_FOR POLICIES)
+        cmake_policy(SET CMP0174 NEW) # cmake_parse_arguments(PARSE_ARGV) defines a variable for an empty string after a single-value keyword.
 
-    cmake_parse_arguments(PARSE_ARGV 0 ADD_NUGET "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
+        set(OPTIONS)
+        set(ONE_VALUE_KEYWORDS CONFIG_FILE DEPENDENCYVERSION PACKAGESAVEMODE PRERELEASE)
+        set(MULTI_VALUE_KEYWORDS PACKAGES)
 
-    # Get policy CMP0074:
-    #   if OLD, the '${PACKAGE_NAME}_DIR' should point to the NuGet package location
-    #   if NEW, the '${PACKAGE_NAME}_ROOT' should point to the NuGet package location
-    cmake_policy(GET CMP0074 POLICY_CMP0074)
+        cmake_parse_arguments(PARSE_ARGV 0 ADD_NUGET "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
 
-    # Get policy CMP0144:
-    #   if OLD, the '${PACKAGE_NAME}_ROOT' should point to the NuGet package location
-    #   if NEW, the '${PACKAGE_NAME_UPPER}_ROOT' should point to the NuGet package location
-    cmake_policy(GET CMP0144 POLICY_CMP0144)
+        # Get policy CMP0074:
+        #   if OLD, the '${PACKAGE_NAME}_DIR' should point to the NuGet package location
+        #   if NEW, the '${PACKAGE_NAME}_ROOT' should point to the NuGet package location
+        cmake_policy(GET CMP0074 POLICY_CMP0074)
 
-    # Ensure that 'ADD_NUGET_PACKAGESAVEMODE' has - at least 'nuspec'
-    if (ADD_NUGET_PACKAGESAVEMODE STREQUAL "")
-        set(ADD_NUGET_PACKAGESAVEMODE nuspec)
-    elseif(NOT (ADD_NUGET_PACKAGESAVEMODE MATCHES "nuspec"))
-        set(ADD_NUGET_PACKAGESAVEMODE "${ADD_NUGET_PACKAGESAVEMODE};nuspec")
-    endif()
+        # Get policy CMP0144:
+        #   if OLD, the '${PACKAGE_NAME}_ROOT' should point to the NuGet package location
+        #   if NEW, the '${PACKAGE_NAME_UPPER}_ROOT' should point to the NuGet package location
+        cmake_policy(GET CMP0144 POLICY_CMP0144)
 
-    # Enumerate the packages and 'install' each one.
-    while(ADD_NUGET_PACKAGES)
-        list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_NAME)
-        list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_VERSION)
-
-        if((PACKAGE_NAME STREQUAL "") OR (PACKAGE_VERSION STREQUAL ""))
-            message(FATAL_ERROR "add_nuget_packages: 'PACKAGES' must be passed valid NuGet name/version pairs.")
+        # Ensure that 'ADD_NUGET_PACKAGESAVEMODE' has - at least 'nuspec'
+        if (ADD_NUGET_PACKAGESAVEMODE STREQUAL "")
+            set(ADD_NUGET_PACKAGESAVEMODE nuspec)
+        elseif(NOT (ADD_NUGET_PACKAGESAVEMODE MATCHES "nuspec"))
+            set(ADD_NUGET_PACKAGESAVEMODE "${ADD_NUGET_PACKAGESAVEMODE};nuspec")
         endif()
 
-        # Build 'PACKAGE_NAME_PROPERTY' - the CMake-property friendly form of PACKAGE_NAME.
-        #   1. convert to uppercase to follow CMake variable naming conventions
-        #   2. replace '.' and '-' with '_' to make it a valid CMake variable name
-        string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
-        string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
-        string(REPLACE "." "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_UPPER})
-        string(REPLACE "-" "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_PROPERTY})
+        # Enumerate the packages and 'install' each one.
+        while(ADD_NUGET_PACKAGES)
+            list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_NAME)
+            list(POP_FRONT ADD_NUGET_PACKAGES PACKAGE_VERSION)
 
-        get_property(EXISTING_VERSION GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}")
-        if(EXISTING_VERSION)
-            # The NuGet has already been added. If the version matches, just continue.
-            if(EXISTING_VERSION STREQUAL PACKAGE_VERSION)
-                message(VERBOSE "add_nuget_packages: The package '${PACKAGE_NAME}' version '${PACKAGE_VERSION}' has already been added.")
-                set("${PACKAGE_NAME}_FOUND" TRUE PARENT_SCOPE)
-                continue()
-            endif()
-            message(FATAL_ERROR "add_nuget_packages: The package '${PACKAGE_NAME}' has already been added with version ${EXISTING_VERSION} - unable to add version ${PACKAGE_VERSION}.")
-        endif()
-
-        install_nuget_package(${PACKAGE_NAME} ${PACKAGE_VERSION} NUGET_LOCATION
-            PRERELEASE ${ADD_NUGET_PRERELEASE}
-            FRAMEWORK ${ADD_NUGET_FRAMEWORK}
-            CONFIG_FILE ${ADD_NUGET_CONFIG_FILE}
-            PACKAGESAVEMODE ${ADD_NUGET_PACKAGESAVEMODE}
-            DEPENDENCYVERSION ${ADD_NUGET_DEPENDENCYVERSION}
-        )
-
-        # Look for package details in the NuGet - if they exist, set the relevant property to reference it
-        # so that find_package can find it.
-        set(PROBE_PATHS
-            "${NUGET_LOCATION}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
-            "${NUGET_LOCATION}/build/native/${PACKAGE_NAME_LOWER}.cmake"
-            "${NUGET_LOCATION}/build/${PACKAGE_NAME_LOWER}.cmake"
-            "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
-        )
-
-        foreach(PROBE_PATH ${PROBE_PATHS})
-            if(NOT (EXISTS "${PROBE_PATH}"))
-                continue()
+            if((PACKAGE_NAME STREQUAL "") OR (PACKAGE_VERSION STREQUAL ""))
+                message(FATAL_ERROR "add_nuget_packages: 'PACKAGES' must be passed valid NuGet name/version pairs.")
             endif()
 
-            message(VERBOSE "add_nuget_library: ${PROBE_PATH}")
-            set(PROBE_FOLDER "${PROBE_PATH}/..")
-            cmake_path(NORMAL_PATH PROBE_FOLDER)
+            # Build 'PACKAGE_NAME_PROPERTY' - the CMake-property friendly form of PACKAGE_NAME.
+            #   1. convert to uppercase to follow CMake variable naming conventions
+            #   2. replace '.' and '-' with '_' to make it a valid CMake variable name
+            string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
+            string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
+            string(REPLACE "." "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_UPPER})
+            string(REPLACE "-" "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_PROPERTY})
 
-            if(POLICY_CMP0074 STREQUAL "NEW")
-                if(POLICY_CMP0144 STREQUAL "NEW")
-                    set(${PACKAGE_NAME_UPPER}_ROOT ${PROBE_FOLDER} PARENT_SCOPE)
-                else()
-                    set(${PACKAGE_NAME}_ROOT ${PROBE_FOLDER} PARENT_SCOPE)
+            get_property(EXISTING_VERSION GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}")
+            if(EXISTING_VERSION)
+                # The NuGet has already been added. If the version matches, just continue.
+                if(EXISTING_VERSION STREQUAL PACKAGE_VERSION)
+                    message(VERBOSE "add_nuget_packages: The package '${PACKAGE_NAME}' version '${PACKAGE_VERSION}' has already been added.")
+                    set("${PACKAGE_NAME}_FOUND" TRUE PARENT_SCOPE)
+                    continue()
                 endif()
-            else()
-                set(${PACKAGE_NAME}_DIR ${PROBE_FOLDER} PARENT_SCOPE)
+                message(FATAL_ERROR "add_nuget_packages: The package '${PACKAGE_NAME}' has already been added with version ${EXISTING_VERSION} - unable to add version ${PACKAGE_VERSION}.")
             endif()
 
-            set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
-            set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
-            break()
-        endforeach()
-    endwhile()
+            install_nuget_package(${PACKAGE_NAME} ${PACKAGE_VERSION} NUGET_LOCATION
+                PRERELEASE ${ADD_NUGET_PRERELEASE}
+                FRAMEWORK ${ADD_NUGET_FRAMEWORK}
+                CONFIG_FILE ${ADD_NUGET_CONFIG_FILE}
+                PACKAGESAVEMODE ${ADD_NUGET_PACKAGESAVEMODE}
+                DEPENDENCYVERSION ${ADD_NUGET_DEPENDENCYVERSION}
+            )
+
+            # Look for package details in the NuGet - if they exist, set the relevant property to reference it
+            # so that find_package can find it.
+            set(PROBE_PATHS
+                "${NUGET_LOCATION}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
+                "${NUGET_LOCATION}/build/native/${PACKAGE_NAME_LOWER}.cmake"
+                "${NUGET_LOCATION}/build/${PACKAGE_NAME_LOWER}.cmake"
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
+            )
+
+            foreach(PROBE_PATH ${PROBE_PATHS})
+                if(NOT (EXISTS "${PROBE_PATH}"))
+                    continue()
+                endif()
+
+                message(VERBOSE "add_nuget_library: ${PROBE_PATH}")
+                set(PROBE_FOLDER "${PROBE_PATH}/..")
+                cmake_path(NORMAL_PATH PROBE_FOLDER)
+
+                if(POLICY_CMP0074 STREQUAL "NEW")
+                    if(POLICY_CMP0144 STREQUAL "NEW")
+                        set(${PACKAGE_NAME_UPPER}_ROOT ${PROBE_FOLDER} PARENT_SCOPE)
+                    else()
+                        set(${PACKAGE_NAME}_ROOT ${PROBE_FOLDER} PARENT_SCOPE)
+                    endif()
+                else()
+                    set(${PACKAGE_NAME}_DIR ${PROBE_FOLDER} PARENT_SCOPE)
+                endif()
+
+                set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
+                set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
+                break()
+            endforeach()
+        endwhile()
+    endblock()
 endfunction()
