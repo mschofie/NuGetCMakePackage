@@ -1,5 +1,7 @@
 #[[====================================================================================================================
 ====================================================================================================================]]#
+cmake_minimum_required(VERSION 3.20)
+
 include_guard()
 
 define_property(VARIABLE
@@ -58,10 +60,10 @@ function(ensure_nuget)
     # If NuGet isn't found, download it.
     #
     # NuGet.exe will be downloaded to `NUGET_TOOLS_PATH`. If `NUGET_TOOLS_PATH` is not set then it will be downloaded to '${CMAKE_BINARY_DIR}/__tools'.
-    if(NUGET_PATH STREQUAL "NUGET_PATH-NOTFOUND")
+    if(NOT NUGET_PATH)
         if(NOT NUGET_VERSION)
-            set(NUGET_VERSION "6.14.0")
-            set(NUGET_HASH "SHA256=92dbed160ddee0f64b901e907439e021211b428e57c089ecc12fc38dcc4bd9a5")
+            set(NUGET_VERSION "7.3.0")
+            set(NUGET_HASH "SHA256=39b6309e76c832e4de2ac7f86da9a8afaa12bc5b4307ea335e9d69e2d6d1a94a")
         else()
             if(NOT NUGET_HASH)
                 message(FATAL_ERROR "NUGET_VERSION is set to ${NUGET_VERSION}. NUGET_HASH must be set if NUGET_VERSION is set.")
