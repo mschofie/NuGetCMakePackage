@@ -1,8 +1,13 @@
 #[[====================================================================================================================
 ====================================================================================================================]]#
-cmake_minimum_required(VERSION 3.31)
 
 include_guard()
+
+# Check for minimum CMake version. Avoid using `cmake_minimum_required`, which will reset policies if this file is
+# included by a project that has already specified a minimum CMake version.
+if(CMAKE_VERSION VERSION_LESS 3.31)
+    message(FATAL_ERROR "NuGetCMakePackage requires at least CMake 3.31, but CMake ${CMAKE_VERSION} is in use.")
+endif()
 
 define_property(VARIABLE
     PROPERTY NUGET_PACKAGE_ROOT_PATH
