@@ -18,6 +18,8 @@
 ====================================================================================================================]]#
 include_guard()
 
+cmake_minimum_required(VERSION 3.31)
+
 find_package(Microsoft.Windows.CppWinRT CONFIG REQUIRED)
 find_package(Microsoft.WindowsAppSDK.InteractiveExperiences CONFIG REQUIRED)
 
