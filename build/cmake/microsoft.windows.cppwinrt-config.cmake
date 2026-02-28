@@ -44,8 +44,6 @@ endif()
             * local               Local %WinDir%\System32\WinMetadata folder
             * sdk[+]              Current version of Windows SDK [with extensions]
             * 10.0.12345.0[+]     Specific version of Windows SDK [with extensions]
-        * or,
-            * nuget:10.0.19041.2  Specific version of the 'Microsoft.Windows.SDK.Contracts'
 
     If the INPUTS includes a path to a .winmd file, the file will be a dependency of the target that generates the
     projection.
@@ -79,16 +77,6 @@ function(add_cppwinrt_projection TARGET_NAME)
 
     if(NOT CPPWINRT_PROJECTION_ROOT_PATH)
         set(CPPWINRT_PROJECTION_ROOT_PATH ${CMAKE_BINARY_DIR}/__cppwinrt)
-    endif()
-
-    if(CPPWINRT_INPUTS MATCHES [[^nuget\:(.*)]])
-        message(VERBOSE "add_cppwinrt_projection: NuGet version '${CMAKE_MATCH_1}' specified.")
-
-        install_nuget_package(Microsoft.Windows.SDK.Contracts "${CMAKE_MATCH_1}" NUGET_MICROSOFT_WINDOWS_SDK_CONTRACTS
-            PACKAGESAVEMODE nuspec
-            DEPENDENCYVERSION Ignore
-        )
-        set(CPPWINRT_INPUTS "${NUGET_MICROSOFT_WINDOWS_SDK_CONTRACTS}/ref/netstandard2.0")
     endif()
 
     set(CPPWINRT_REFS)
