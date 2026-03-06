@@ -44,8 +44,13 @@ define_property(TARGET
         location. If `NUGET_TOOLS_PATH` is not set, then it will default to `${CMAKE_BINARY_DIR}/__tools`.
 ====================================================================================================================]]#
 function(ensure_nunuget)
+    set(NUNUGET_NAME "NuNuGet")
+    if(WIN32)
+        set(NUNUGET_NAME "${NUNUGET_NAME}.exe")
+    endif()
+
     find_program(NUNUGET_PATH
-        NAMES nunuget nunuget.exe
+        NAMES ${NUNUGET_NAME}
     )
 
     if(NUNUGET_PATH)
@@ -109,7 +114,7 @@ function(ensure_nunuget)
         DESTINATION "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/"
     )
 
-    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/nunuget.exe" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/${NUNUGET_NAME}" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
 endfunction()
 
 #[[====================================================================================================================
