@@ -114,7 +114,13 @@ function(ensure_nunuget)
         DESTINATION "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/"
     )
 
-    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/${NUNUGET_NAME}" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/${NUNUGET_NAME}")
+    set(NUNUGET_PATH "${NUNUGET_PATH}" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+
+    if(NOT WIN32)
+        file(CHMOD "${NUNUGET_PATH}" FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    endif()
+
 endfunction()
 
 #[[====================================================================================================================
