@@ -33,7 +33,6 @@ endif()
         add_cppwinrt_projection(<target>
             INPUTS <spec>+
             [DEPS <spec>+]
-            [VERSION <C++/WinRT version>]
             [PROJECTION_ROOT_PATH <path>]
             [OPTIMIZE]
         )
@@ -52,8 +51,6 @@ endif()
     target_link_libraries of this projection target, and any referenced cppwinrt inputs will be used for the
     -ref parameter to cppwinrt when generating this target's projection.
 
-    The VERSION parameter is optional, but if not specified the CPPWINRT_VERSION must be set.
-
     The PROJECTION_ROOT_PATH is optional. If not specified, and CPPWINRT_PROJECTION_ROOT_PATH is set, then the value of
     CPPWINRT_PROJECTION_ROOT_PATH will be used. If no value for PROJECTION_ROOT_PATH is specified, it will be defaulted
     to `${CMAKE_BINARY_DIR}/__cppwinrt`. Note: It is recommended that a custom value is specified outside of
@@ -62,7 +59,7 @@ endif()
 ====================================================================================================================]]#
 function(add_cppwinrt_projection TARGET_NAME)
     set(OPTIONS OPTIMIZE)
-    set(ONE_VALUE_KEYWORDS PROJECTION_ROOT_PATH VERSION PCH_NAME)
+    set(ONE_VALUE_KEYWORDS PROJECTION_ROOT_PATH PCH_NAME)
     set(MULTI_VALUE_KEYWORDS INPUTS DEPS)
 
     if(NOT TARGET_NAME)
@@ -70,10 +67,6 @@ function(add_cppwinrt_projection TARGET_NAME)
     endif()
 
     cmake_parse_arguments(PARSE_ARGV 1 CPPWINRT "${OPTIONS}" "${ONE_VALUE_KEYWORDS}" "${MULTI_VALUE_KEYWORDS}")
-
-    if(NOT CPPWINRT_VERSION)
-        message(FATAL_ERROR "add_cppwinrt_projection: VERSION must be specified, or CPPWINRT_VERSION must be set.")
-    endif()
 
     if(NOT CPPWINRT_PROJECTION_ROOT_PATH)
         set(CPPWINRT_PROJECTION_ROOT_PATH ${CMAKE_BINARY_DIR}/__cppwinrt)
@@ -91,7 +84,6 @@ function(add_cppwinrt_projection TARGET_NAME)
         endforeach()
     endif()
 
-    message(VERBOSE "add_cppwinrt_projection: CPPWINRT_VERSION = ${CPPWINRT_VERSION}")
     message(VERBOSE "add_cppwinrt_projection: CPPWINRT_PROJECTION_ROOT_PATH = ${CPPWINRT_PROJECTION_ROOT_PATH}")
 
     # For 'overlay' configuration, rely on the 'NUGET_LOCATION-<package name>' global property set by the NuGetCMakePackage.
