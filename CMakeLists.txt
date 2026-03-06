@@ -44,8 +44,13 @@ define_property(TARGET
         location. If `NUGET_TOOLS_PATH` is not set, then it will default to `${CMAKE_BINARY_DIR}/__tools`.
 ====================================================================================================================]]#
 function(ensure_nunuget)
+    set(NUNUGET_NAME "NuNuGet")
+    if(WIN32)
+        set(NUNUGET_NAME "${NUNUGET_NAME}.exe")
+    endif()
+
     find_program(NUNUGET_PATH
-        NAMES nunuget nunuget.exe
+        NAMES ${NUNUGET_NAME}
     )
 
     if(NUNUGET_PATH)
@@ -109,7 +114,13 @@ function(ensure_nunuget)
         DESTINATION "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/"
     )
 
-    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/nunuget.exe" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+    set(NUNUGET_PATH "${NUGET_TOOLS_PATH}/${PACKAGE_NAME}.${PACKAGE_VERSION}/tools/any/${PACKAGE_SYSTEM}-${PACKAGE_ARCH}/${NUNUGET_NAME}")
+    set(NUNUGET_PATH "${NUNUGET_PATH}" CACHE FILEPATH "The location of 'NuNuGet' executable" FORCE)
+
+    if(NOT WIN32)
+        file(CHMOD "${NUNUGET_PATH}" FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    endif()
+
 endfunction()
 
 #[[====================================================================================================================
@@ -255,7 +266,7 @@ function(add_nuget_packages)
             if(NUNUGET_RESULT EQUAL 100)
                 message(FATAL_ERROR "add_nuget_packages: The specified NuGet packages differ from the lock file: ${ADD_NUGET_LOCK_FILE}.\nPlease delete the lock file and re-run configuration to regenerate the lock file with the updated packages.")
             endif()
-            message(FATAL_ERROR "add_nuget_packages: NuNuGet failed with error: ${NUNUGET_ERROR}")
+            message(FATAL_ERROR "add_nuget_packages: NuNuGet failed with exit code ${NUNUGET_RESULT}. Output: ${NUNUGET_OUTPUT}\nError: ${NUNUGET_ERROR}")
         endif()
 
         # Convert the output from NuNuGet into a list of lines to parse the resolved packages and their paths.
@@ -284,15 +295,17 @@ function(add_nuget_packages)
             set(PACKAGE_NAME ${CMAKE_MATCH_1})
             set(PACKAGE_VERSION ${CMAKE_MATCH_2})
 
+            string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
+            string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
+
             message(STATUS "NuGet package: ${PACKAGE_NAME}/${PACKAGE_VERSION}")
 
-            cmake_path(SET NUGET_LOCATION NORMALIZE "${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME}/${PACKAGE_VERSION}")
+            # The location of the package in the global packages folder is: ${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME_LOWER}/${PACKAGE_VERSION}
+            cmake_path(SET NUGET_LOCATION NORMALIZE "${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME_LOWER}/${PACKAGE_VERSION}")
 
             # Build 'PACKAGE_NAME_PROPERTY' - the CMake-property friendly form of PACKAGE_NAME.
             #   1. convert to uppercase to follow CMake variable naming conventions
             #   2. replace '.' and '-' with '_' to make it a valid CMake variable name
-            string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
-            string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
             string(REPLACE "." "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_UPPER})
             string(REPLACE "-" "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_PROPERTY})
 
