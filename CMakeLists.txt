@@ -266,7 +266,7 @@ function(add_nuget_packages)
             if(NUNUGET_RESULT EQUAL 100)
                 message(FATAL_ERROR "add_nuget_packages: The specified NuGet packages differ from the lock file: ${ADD_NUGET_LOCK_FILE}.\nPlease delete the lock file and re-run configuration to regenerate the lock file with the updated packages.")
             endif()
-            message(FATAL_ERROR "add_nuget_packages: NuNuGet failed with error: ${NUNUGET_ERROR}")
+            message(FATAL_ERROR "add_nuget_packages: NuNuGet failed with exit code ${NUNUGET_RESULT}. Output: ${NUNUGET_OUTPUT}\nError: ${NUNUGET_ERROR}")
         endif()
 
         # Convert the output from NuNuGet into a list of lines to parse the resolved packages and their paths.
