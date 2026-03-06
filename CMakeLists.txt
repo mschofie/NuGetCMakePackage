@@ -295,15 +295,17 @@ function(add_nuget_packages)
             set(PACKAGE_NAME ${CMAKE_MATCH_1})
             set(PACKAGE_VERSION ${CMAKE_MATCH_2})
 
+            string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
+            string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
+
             message(STATUS "NuGet package: ${PACKAGE_NAME}/${PACKAGE_VERSION}")
 
-            cmake_path(SET NUGET_LOCATION NORMALIZE "${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME}/${PACKAGE_VERSION}")
+            # The location of the package in the global packages folder is: ${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME_LOWER}/${PACKAGE_VERSION}
+            cmake_path(SET NUGET_LOCATION NORMALIZE "${GLOBAL_PACKAGES_PATH}/${PACKAGE_NAME_LOWER}/${PACKAGE_VERSION}")
 
             # Build 'PACKAGE_NAME_PROPERTY' - the CMake-property friendly form of PACKAGE_NAME.
             #   1. convert to uppercase to follow CMake variable naming conventions
             #   2. replace '.' and '-' with '_' to make it a valid CMake variable name
-            string(TOUPPER ${PACKAGE_NAME} PACKAGE_NAME_UPPER)
-            string(TOLOWER ${PACKAGE_NAME} PACKAGE_NAME_LOWER)
             string(REPLACE "." "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_UPPER})
             string(REPLACE "-" "_" PACKAGE_NAME_PROPERTY ${PACKAGE_NAME_PROPERTY})
 
