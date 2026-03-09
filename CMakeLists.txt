@@ -292,7 +292,7 @@ function(add_nuget_packages)
                 "${NUGET_LOCATION}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
                 "${NUGET_LOCATION}/build/native/${PACKAGE_NAME_LOWER}.cmake"
                 "${NUGET_LOCATION}/build/${PACKAGE_NAME_LOWER}.cmake"
-                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/build/cmake/${PACKAGE_NAME_LOWER}-config.cmake"
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/overlay/${PACKAGE_NAME_LOWER}/${PACKAGE_NAME_LOWER}-config.cmake"
             )
 
             foreach(PROBE_PATH ${PROBE_PATHS})
