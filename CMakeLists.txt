@@ -295,6 +295,7 @@ function(add_nuget_packages)
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/overlay/${PACKAGE_NAME_LOWER}/${PACKAGE_NAME_LOWER}-config.cmake"
             )
 
+            set(_PROBE_FOUND FALSE)
             foreach(PROBE_PATH ${PROBE_PATHS})
                 if(NOT (EXISTS "${PROBE_PATH}"))
                     continue()
@@ -316,8 +317,48 @@ function(add_nuget_packages)
 
                 set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
                 set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
+                set(_PROBE_FOUND TRUE)
                 break()
             endforeach()
+
+            # If no config file was found via probing, check if the package follows the WinAppSDK
+            # convention (has metadata/*.winmd or runtimes-framework/ directories). If so, generate
+            # a forwarding config that includes the single generalized convention config.
+            if(NOT _PROBE_FOUND)
+                set(_CONVENTION_CONFIG "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/overlay/_convention/_convention-config.cmake")
+                if(EXISTS "${_CONVENTION_CONFIG}")
+                    set(_HAS_CONVENTION FALSE)
+                    if(IS_DIRECTORY "${NUGET_LOCATION}/metadata" OR
+                       IS_DIRECTORY "${NUGET_LOCATION}/runtimes-framework" OR
+                       IS_DIRECTORY "${NUGET_LOCATION}/include")
+                        set(_HAS_CONVENTION TRUE)
+                    endif()
+
+                    if(_HAS_CONVENTION)
+                        message(VERBOSE "add_nuget_packages: Applying convention-based config for '${PACKAGE_NAME}'")
+
+                        set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
+                        set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
+
+                        # Generate a forwarding config file that find_package can discover
+                        set(_FWD_DIR "${CMAKE_BINARY_DIR}/__convention_configs")
+                        file(MAKE_DIRECTORY "${_FWD_DIR}")
+                        file(WRITE "${_FWD_DIR}/${PACKAGE_NAME_LOWER}-config.cmake"
+                            "include(\"${_CONVENTION_CONFIG}\")\n"
+                        )
+
+                        if(POLICY_CMP0074 STREQUAL "NEW")
+                            if(POLICY_CMP0144 STREQUAL "NEW")
+                                set(${PACKAGE_NAME_UPPER}_ROOT "${_FWD_DIR}" PARENT_SCOPE)
+                            else()
+                                set(${PACKAGE_NAME}_ROOT "${_FWD_DIR}" PARENT_SCOPE)
+                            endif()
+                        else()
+                            set(${PACKAGE_NAME}_DIR "${_FWD_DIR}" PARENT_SCOPE)
+                        endif()
+                    endif()
+                endif()
+            endif()
         endwhile()
     endblock()
 endfunction()
