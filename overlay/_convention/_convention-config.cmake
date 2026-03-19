@@ -90,7 +90,9 @@ if("${_CONV_PKG_LOC}" STREQUAL "")
 endif()
 
 # Ensure CppWinRT is available for projection generation
-find_package(Microsoft.Windows.CppWinRT CONFIG QUIET)
+if(NOT TARGET Microsoft.Windows.CppWinRT)
+    find_package(Microsoft.Windows.CppWinRT CONFIG QUIET)
+endif()
 
 #----------------------------------------------------------------------------------------------------------------------
 # Auto-resolve dependencies by parsing the package's .nuspec file

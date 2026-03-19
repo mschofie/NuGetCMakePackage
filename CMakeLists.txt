@@ -321,21 +321,14 @@ function(add_nuget_packages)
                 break()
             endforeach()
 
-            # If no config file was found via probing, check if the package follows the WinAppSDK
-            # convention (has metadata/*.winmd or runtimes-framework/ directories). If so, generate
-            # a forwarding config that includes the single generalized convention config.
+            # If no config file was found via probing, check if the package matches a known
+            # convention. Currently, Microsoft.WindowsAppSDK.* packages follow a consistent layout
+            # that can be handled by a single generalized convention config.
             if(NOT _PROBE_FOUND)
-                set(_CONVENTION_CONFIG "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/overlay/_convention/_convention-config.cmake")
-                if(EXISTS "${_CONVENTION_CONFIG}")
-                    set(_HAS_CONVENTION FALSE)
-                    if(IS_DIRECTORY "${NUGET_LOCATION}/metadata" OR
-                       IS_DIRECTORY "${NUGET_LOCATION}/runtimes-framework" OR
-                       IS_DIRECTORY "${NUGET_LOCATION}/include")
-                        set(_HAS_CONVENTION TRUE)
-                    endif()
-
-                    if(_HAS_CONVENTION)
-                        message(VERBOSE "add_nuget_packages: Applying convention-based config for '${PACKAGE_NAME}'")
+                if(PACKAGE_NAME MATCHES "^Microsoft\\.WindowsAppSDK\\.")
+                    set(_CONVENTION_CONFIG "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/overlay/_convention/_convention-config.cmake")
+                    if(EXISTS "${_CONVENTION_CONFIG}")
+                        message(VERBOSE "add_nuget_packages: Applying WinAppSDK convention for '${PACKAGE_NAME}'")
 
                         set_property(GLOBAL PROPERTY "NUGET_VERSION-${PACKAGE_NAME_PROPERTY}" ${PACKAGE_VERSION})
                         set_property(GLOBAL PROPERTY "NUGET_LOCATION-${PACKAGE_NAME_PROPERTY}" ${NUGET_LOCATION})
